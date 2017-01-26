@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import os
+import matplotlib.pyplot as plt
 
 from gensim import corpora
 from nltk.corpus import stopwords
@@ -13,6 +15,11 @@ from keras.layers import Dense, Dropout, Activation, Embedding
 from keras.layers import LSTM
 
 np.random.seed(0)
+#set the working directory
+rootDir="/home/jakob/UPC/2016/02/DeepLearning"
+dataDir=rootDir + "/data"
+codeDir=rootDir + "/code"
+os.chdir(dataDir)
 
 if __name__ == "__main__":
 
@@ -52,7 +59,6 @@ if __name__ == "__main__":
     dictionary_size = len(dictionary.keys())
     print "dictionary size: ", dictionary_size
    
-
     print "converting to token ids..."
     word_id_train, word_id_len = [], []
     for doc in processed_docs_train:
@@ -72,6 +78,7 @@ if __name__ == "__main__":
     word_id_train = sequence.pad_sequences(np.array(word_id_train), maxlen=seq_len)
     word_id_test = sequence.pad_sequences(np.array(word_id_test), maxlen=seq_len)
     y_train_enc = np_utils.to_categorical(sentiment_train, num_labels)
+    
     print('word_id_train:', word_id_train.shape)
     print(' word_id_test:', word_id_test.shape)
 
@@ -87,12 +94,16 @@ if __name__ == "__main__":
     print('train...') 
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     #model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    model.fit(word_id_train, y_train_enc, nb_epoch=200, batch_size=256, verbose=1)
-    
-    test_pred = model.predict_classes(word_id_test)
-     
 
-    history = model.fit(word_id_train, word_id_train, validation_split=0.33, nb_epoch=200, batch_size=10, verbose=0)
+    #restricted data set, only 1/3 of the rows
+    numRows=52020
+    word_id_train_restricted=word_id_train[:numRows]
+    y_train_enc_restricted=y_train_enc[:numRows]
+    
+    history=model.fit(x=word_id_train_restricted, y=y_train_enc_restricted,
+    nb_epoch=10, batch_size=256, 
+    shuffle=True, verbose=1, validation_split=0.5)
+
     #list all data in history
     print(history.history.keys())
     # summarize history for accuracy
@@ -103,6 +114,7 @@ if __name__ == "__main__":
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     plt.show()
+
     # summarize history for loss
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
