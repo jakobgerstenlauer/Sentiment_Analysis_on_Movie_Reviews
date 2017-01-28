@@ -1,9 +1,10 @@
 #!/usr/bin/python
-
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import sys, getopt
+import math
 from gensim import corpora
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize 
@@ -16,7 +17,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Embedding
 from keras.layers import LSTM
 from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
-
+    
 class AccHistory(Callback):
     def on_train_begin(self, logs={}):
         self.losses = []
@@ -36,13 +37,19 @@ def main(argv):
     #set default values
     nb_epoch = 1
     DROPOUT = 0
+    dryRun = False
     try:
-      opts, args = getopt.getopt(argv,"hd:e:",["dropout=","epochs="])
+      opts, args = getopt.getopt(argv,"htd:e:",["dropout=","epochs="])
     except getopt.GetoptError:
+      print 'usage:'
       print 'plstm_validation.py -d <drop-out rate> -e <nr of epochs> '
+      print 'usage test run with 1% of data:'
+      print 'plstm_validation.py -t -d <drop-out rate> -e <nr of epochs> '      
       sys.exit(2)
-    for opt, arg in opts:
-      if opt == '-h':
+    for opt, arg in opts:      
+      if opt == '-t':
+         dryRun = True
+      elif opt == '-h':
          print 'plstm_validation.py -d <drop-out rate> -e <nr of epochs> '
          sys.exit()
       elif opt in ("-d", "--dropout"):
@@ -57,7 +64,12 @@ def main(argv):
          nb_epoch = int(arg)
     print 'Nr of epochs is ', nb_epoch
     print 'Drop-out rate is ', DROPOUT
-
+    if(dryRun):
+        print 'This is a test run with only 1% of the data.'
+        
+    #TODO remove
+    #os.chdir("/home/jakob/UPC/2016/02/DeepLearning/code")
+    
     batch_size = 128
     nb_classes = 11#TODO ???
     np.random.seed(0)
@@ -65,10 +77,17 @@ def main(argv):
     #load data
     train_df = pd.read_csv('train.tsv', sep='\t', header=0)
     test_df = pd.read_csv('test.tsv', sep='\t', header=0)
-
+  
     raw_docs_train = train_df['Phrase'].values
     raw_docs_test = test_df['Phrase'].values
     sentiment_train = train_df['Sentiment'].values
+
+    if(dryRun == True):
+        maxIndex = int(math.ceil(len(raw_docs_train)*0.01))
+        raw_docs_train=raw_docs_train[1:maxIndex]
+        raw_docs_test=raw_docs_test[1:maxIndex]
+        sentiment_train=sentiment_train[1:maxIndex]
+   
     num_labels = len(np.unique(sentiment_train))
 
     #text pre-processing
@@ -101,29 +120,34 @@ def main(argv):
     #corpus = [dictionary.doc2bow(doc) for doc in processed_docs]
 
     print "converting to token ids..."
+    print "processed docs train", len(processed_docs_train)
+    print "processed docs test", len(processed_docs_test)
+    
     word_id_train, word_id_len = [], []
     for doc in processed_docs_train:
         word_ids = [dictionary.token2id[word] for word in doc]
         word_id_train.append(word_ids)
         word_id_len.append(len(word_ids))
-
+    
+    print "processed word ids train", len(word_id_train)
+    
     word_id_test, word_ids = [], []
     for doc in processed_docs_test:
         word_ids = [dictionary.token2id[word] for word in doc]
         word_id_test.append(word_ids)
         word_id_len.append(len(word_ids))
  
+    print "processed word ids test", len(word_id_test)
+    
     seq_len = np.round((np.mean(word_id_len) + 2*np.std(word_id_len))).astype(int)
 
     #pad sequences
     word_id_train = sequence.pad_sequences(np.array(word_id_train), maxlen=seq_len)
     word_id_test = sequence.pad_sequences(np.array(word_id_test), maxlen=seq_len)
     y_train_enc = np_utils.to_categorical(sentiment_train, num_labels)
-
-    #PLSTM
-    print "fitting PLSTM ..."
-    from phased_lstm_keras.PhasedLSTM import PhasedLSTM as PLSTM
-   
+    
+    #PLSTM        
+    print "building PLSTM ..."
     model_PLSTM = Sequential()
     model_PLSTM.add(Embedding(dictionary_size, 128, dropout=DROPOUT))
     model_PLSTM.add(PLSTM(128, consume_less='gpu'))
@@ -134,11 +158,25 @@ def main(argv):
     model_PLSTM.summary()
     acc_PLSTM = AccHistory()
     loss_PLSTM = LossHistory()
-
+    
+    print "fitting PLSTM ..."
     history_plstm=model_PLSTM.fit(x=word_id_train, y=y_train_enc,
     nb_epoch=nb_epoch, batch_size=128, 
     shuffle=True, verbose=1, validation_split=0.25,
     callbacks=[acc_PLSTM, loss_PLSTM])
+    
+    #save results to text file
+    fileName="PLSTM_accuracy_and_loss_epochs_"+str(nb_epoch)+"_drop_out_"+str(DROPOUT)+".txt"
+    index = range(1,1+len(np.asarray(loss_PLSTM.losses)))
+    print index
+    columns = ['accuracy_PLSTM','loss_PLSTM']
+    print columns
+    df = pd.DataFrame(
+    {'accuracy_PLSTM': np.asarray(acc_PLSTM.losses),
+    'loss_PLSTM': np.asarray(loss_PLSTM.losses)},
+    index=index, columns=columns)
+    print df
+    df.to_csv(fileName, sep=';')
 
     # summarize history for accuracy
     plt.figure(1, figsize=(10, 10))
@@ -150,7 +188,8 @@ def main(argv):
     plt.legend(['train', 'validation'], loc='upper left')
     figName = "PLSTM_accuracy_train_vs_validation_drop_out"+str(DROPOUT)+".svg"
     plt.savefig(figName, dpi=200)
-
+    plt.clf()
+    
     # summarize history for loss
     plt.figure(2, figsize=(10, 10))
     plt.plot(history_plstm.history['loss'])
@@ -161,7 +200,8 @@ def main(argv):
     plt.legend(['train', 'validation'], loc='upper left')
     figName = "PLSTM_loss_train_vs_validation_drop_out"+str(DROPOUT)+".svg"
     plt.savefig(figName, dpi=200)
-    
+    plt.clf()
+
     #LSTM
     print "fitting LSTM ..."
     model_LSTM = Sequential()
@@ -180,6 +220,22 @@ def main(argv):
     shuffle=True, verbose=1, validation_split=0.25,
     callbacks=[acc_LSTM, loss_LSTM])
 
+    #save results to text file
+    fileName="both_models_accuracy_and_loss_epochs_"+str(nb_epoch)+"_drop_out_"+str(DROPOUT)+".txt"
+    index = range(1,1+len(np.asarray(loss_PLSTM.losses)))
+    print index
+    columns = ['accuracy_PLSTM','loss_PLSTM','accuracy_LSTM','loss_LSTM']
+    print columns
+    df = pd.DataFrame(
+    {'accuracy_PLSTM': np.asarray(acc_PLSTM.losses),
+    'loss_PLSTM': np.asarray(loss_PLSTM.losses),
+    'accuracy_LSTM': np.asarray(acc_LSTM.losses),
+    'loss_LSTM': np.asarray(loss_LSTM.losses)    
+    },
+    index=index, columns=columns)
+    print df
+    df.to_csv(fileName, sep=';')
+        
     # summarize history for accuracy
     plt.figure(3, figsize=(10, 10))
     plt.plot(history_lstm.history['acc'])
@@ -190,6 +246,7 @@ def main(argv):
     plt.legend(['train', 'validation'], loc='upper left')
     figName = "LSTM_accuracy_train_vs_validation_drop_out"+str(DROPOUT)+".svg"
     plt.savefig(figName, dpi=200)
+    plt.clf()
     
     # summarize history for loss
     plt.figure(4, figsize=(10, 10))
@@ -201,45 +258,50 @@ def main(argv):
     plt.legend(['train', 'validation'], loc='upper left')
     figName = "LSTM_loss_train_vs_validation_drop_out"+str(DROPOUT)+".svg"
     plt.savefig(figName, dpi=200)
-        
+    plt.clf() 
+       
     # plot results for training dataset
     plt.figure(5, figsize=(10, 10))
-    plt.title('Accuracy on training dataset')
+    plt.title('Accuracy on validation set')
     plt.xlabel('Iterations, batch size ' + str(batch_size))
     plt.ylabel('accuracy')
     plt.plot(acc_LSTM.losses, color='k', label='LSTM')
     plt.hold(True)
     plt.plot(acc_PLSTM.losses, color='r', label='PLSTM')
+    plt.legend(['LSTM', 'PLSTM'], loc='upper left')
     figName = 'sentiment_plstm_lstm_comparison_acc_drop_out_'+str(DROPOUT)+'.png'
     plt.savefig(figName, dpi=200)
-    
+    plt.clf()  
+      
     plt.figure(6, figsize=(10, 10))
-    plt.title('Loss on training dataset')
+    plt.title('Loss on validation set')
     plt.xlabel('Iterations, batch size ' + str(batch_size))
     plt.ylabel('Categorical cross-entropy')
     plt.plot(loss_LSTM.losses, color='k', label='LSTM')
     plt.hold(True)
     plt.plot(loss_PLSTM.losses, color='r', label='PLSTM')
+    plt.legend(['LSTM', 'PLSTM'], loc='upper left')
     figName = 'sentiment_plstm_lstm_comparison_loss_drop_out_'+str(DROPOUT)+'.png'
     plt.savefig(figName, dpi=200)
+    plt.clf()
 
     #calculate predictions for the test set
     test_pred_PLSTM = model_PLSTM.predict_classes(word_id_test) 
     test_pred_LSTM = model_LSTM.predict_classes(word_id_test)
-   
-    #result print in csv format (PLSTM) 
-    test_df['Sentiment'] = test_pred_LSTM.reshape(-1,1) 
-    header = ['PhraseId', 'Sentiment']
-    fileName = 'Lstm_sentiment_prediction_results_drop_out_'+str(DROPOUT)+'.csv'
-    test_df.to_csv(fileName, columns=header, index=False, header=True)
     
-    #result print in csv format (LSTM)
-    test_df['Sentiment'] = test_pred_PLSTM.reshape(-1,1) 
-    header = ['PhraseId', 'Sentiment']
-    fileName = 'Plstm_sentiment_prediction_results_drop_out_'+str(DROPOUT)+'.csv'
-    test_df.to_csv(fileName, columns=header, index=False, header=True)    
-   
-    
+    if(dryRun == False):
+        #result print in csv format (PLSTM) 
+        test_df['Sentiment'] = test_pred_LSTM.reshape(-1,1) 
+        header = ['PhraseId', 'Sentiment']
+        fileName = 'Lstm_sentiment_prediction_results_drop_out_'+str(DROPOUT)+'.csv'
+        test_df.to_csv(fileName, columns=header, index=False, header=True)
+        
+        #result print in csv format (LSTM)
+        test_df['Sentiment'] = test_pred_PLSTM.reshape(-1,1) 
+        header = ['PhraseId', 'Sentiment']
+        fileName = 'Plstm_sentiment_prediction_results_drop_out_'+str(DROPOUT)+'.csv'
+        test_df.to_csv(fileName, columns=header, index=False, header=True)    
+       
 if __name__ == "__main__":
     main(sys.argv[1:])    
    
