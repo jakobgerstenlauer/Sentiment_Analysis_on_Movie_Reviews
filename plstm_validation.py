@@ -168,14 +168,11 @@ def main(argv):
     #save results to text file
     fileName="PLSTM_accuracy_and_loss_epochs_"+str(nb_epoch)+"_drop_out_"+str(DROPOUT)+".txt"
     index = range(1,1+len(np.asarray(loss_PLSTM.losses)))
-    print index
     columns = ['accuracy_PLSTM','loss_PLSTM']
-    print columns
     df = pd.DataFrame(
     {'accuracy_PLSTM': np.asarray(acc_PLSTM.losses),
     'loss_PLSTM': np.asarray(loss_PLSTM.losses)},
     index=index, columns=columns)
-    print df
     df.to_csv(fileName, sep=';')
 
     # summarize history for accuracy
@@ -259,9 +256,38 @@ def main(argv):
     figName = "LSTM_loss_train_vs_validation_drop_out"+str(DROPOUT)+".svg"
     plt.savefig(figName, dpi=200)
     plt.clf() 
-       
-    # plot results for training dataset
+    
+    # summarize history for accuracy combining both models
     plt.figure(5, figsize=(10, 10))
+    plt.plot(history_lstm.history['acc'])
+    plt.plot(history_lstm.history['val_acc'])
+    plt.plot(history_plstm.history['acc'])
+    plt.plot(history_plstm.history['val_acc'])
+    plt.title('Model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['LSTM train', 'LSTM validation','PLSTM train', 'PLSTM validation'], loc='upper left')
+    figName = "Both_models_accuracy_drop_out"+str(DROPOUT)+".svg"
+    plt.savefig(figName, dpi=200)
+    plt.clf()
+    
+    # summarize history for loss combining both models
+    plt.figure(6, figsize=(10, 10))
+    plt.plot(history_lstm.history['loss'])
+    plt.plot(history_lstm.history['val_loss'])
+    plt.plot(history_plstm.history['loss'])
+    plt.plot(history_plstm.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['LSTM train', 'LSTM validation','PLSTM train', 'PLSTM validation'],
+    loc='upper left')
+    figName = "Both_models_loss_drop_out"+str(DROPOUT)+".svg"
+    plt.savefig(figName, dpi=200)
+    plt.clf()
+    
+    # plot results for training dataset
+    plt.figure(7, figsize=(10, 10))
     plt.title('Accuracy on validation set')
     plt.xlabel('Iterations, batch size ' + str(batch_size))
     plt.ylabel('accuracy')
@@ -269,11 +295,11 @@ def main(argv):
     plt.hold(True)
     plt.plot(acc_PLSTM.losses, color='r', label='PLSTM')
     plt.legend(['LSTM', 'PLSTM'], loc='upper left')
-    figName = 'sentiment_plstm_lstm_comparison_acc_drop_out_'+str(DROPOUT)+'.png'
+    figName = 'sentiment_plstm_lstm_comparison_acc'+str(DROPOUT)+'.png'
     plt.savefig(figName, dpi=200)
     plt.clf()  
       
-    plt.figure(6, figsize=(10, 10))
+    plt.figure(8, figsize=(10, 10))
     plt.title('Loss on validation set')
     plt.xlabel('Iterations, batch size ' + str(batch_size))
     plt.ylabel('Categorical cross-entropy')
@@ -281,7 +307,7 @@ def main(argv):
     plt.hold(True)
     plt.plot(loss_PLSTM.losses, color='r', label='PLSTM')
     plt.legend(['LSTM', 'PLSTM'], loc='upper left')
-    figName = 'sentiment_plstm_lstm_comparison_loss_drop_out_'+str(DROPOUT)+'.png'
+    figName = 'sentiment_plstm_lstm_comparison_loss'+str(DROPOUT)+'.png'
     plt.savefig(figName, dpi=200)
     plt.clf()
 
