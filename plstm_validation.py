@@ -194,7 +194,7 @@ def main(argv):
     
     print "fitting PLSTM ..."
     history_plstm=model_PLSTM.fit(x=word_id_train, y=y_train_enc,
-    nb_epoch=nb_epoch, batch_size=128, verbose=1, validation_split=0.2,
+    nb_epoch=nb_epoch, batch_size=128, verbose=1, shuffle=True, validation_split=0.2,
     callbacks=[acc_PLSTM, loss_PLSTM])
     
     #save results to text file
@@ -246,7 +246,7 @@ def main(argv):
     loss_LSTM = LossHistory()
         
     history_lstm=model_LSTM.fit(x=word_id_train, y=y_train_enc,
-    nb_epoch=nb_epoch, batch_size=128, verbose=1, validation_split=0.2,
+    nb_epoch=nb_epoch, batch_size=128, verbose=1, shuffle=True, validation_split=0.2,
     callbacks=[acc_LSTM, loss_LSTM])
 
     #save results to text file
