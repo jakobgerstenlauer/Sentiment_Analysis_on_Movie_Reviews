@@ -194,7 +194,7 @@ def main(argv):
     
     print "fitting PLSTM ..."
     history_plstm=model_PLSTM.fit(x=word_id_train, y=y_train_enc,
-    nb_epoch=nb_epoch, batch_size=128, verbose=1, validation_split=0.2,
+    nb_epoch=nb_epoch, batch_size=128, verbose=1, shuffle=True, validation_split=0.2,
     callbacks=[acc_PLSTM, loss_PLSTM])
     
     #save results to text file
@@ -206,7 +206,7 @@ def main(argv):
     'loss_PLSTM': np.asarray(loss_PLSTM.losses)},
     index=index, columns=columns)
     df.to_csv(fileName, sep=';')
-
+    
     # summarize history for accuracy
     plt.figure(1, figsize=(10, 10))
     plt.plot(history_plstm.history['acc'])
@@ -246,7 +246,7 @@ def main(argv):
     loss_LSTM = LossHistory()
         
     history_lstm=model_LSTM.fit(x=word_id_train, y=y_train_enc,
-    nb_epoch=nb_epoch, batch_size=128, verbose=1, validation_split=0.2,
+    nb_epoch=nb_epoch, batch_size=128, verbose=1, shuffle=True, validation_split=0.2,
     callbacks=[acc_LSTM, loss_LSTM])
 
     #save results to text file
@@ -256,10 +256,10 @@ def main(argv):
     columns = ['accuracy_PLSTM','loss_PLSTM','accuracy_LSTM','loss_LSTM']
     print columns
     df = pd.DataFrame(
-    {'accuracy_PLSTM': np.asarray(acc_PLSTM.losses),
-    'loss_PLSTM': np.asarray(loss_PLSTM.losses),
-    'accuracy_LSTM': np.asarray(acc_LSTM.losses),
-    'loss_LSTM': np.asarray(loss_LSTM.losses)    
+    {'accuracy_PLSTM': np.asarray(history_plstm.history['val_acc']),
+    'loss_PLSTM': np.asarray(history_plstm.history['val_loss']),
+    'accuracy_LSTM': np.asarray(history_lstm.history['val_acc']),
+        'loss_LSTM': np.asarray(history_lstm.history['val_loss'])    
     },
     index=index, columns=columns)
     print df
