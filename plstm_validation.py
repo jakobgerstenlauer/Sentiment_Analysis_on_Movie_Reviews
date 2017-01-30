@@ -46,11 +46,16 @@ def main(argv):
       print 'usage test run with 1% of data:'
       print 'plstm_validation.py -t -d <drop-out rate> -e <nr of epochs> '      
       sys.exit(2)
-    for opt, arg in opts:      
+    for opt, arg in opts: 
+      # -t: dry run where we only process part of the data 
       if opt == '-t':
          dryRun = True
+      # -h: get help
       elif opt == '-h':
-         print 'plstm_validation.py -d <drop-out rate> -e <nr of epochs> '
+         print 'This python script predicts the sentiment of Rotten Tomatoes reviews using LTSM and PLTSM neural networks.'
+         print 'Basic usage: plstm_validation.py -d <drop-out rate> -e <nr of epochs> '
+         print 'Basic usage: plstm_validation.py -d <drop-out rate> -e <nr of epochs> '
+         print 'Test run: plstm_validation.py -t -d <drop-out rate> -e <nr of epochs> '
          sys.exit()
       elif opt in ("-d", "--dropout"):
          if(float(arg)>=1.0 or float(arg)<0.0):
@@ -67,58 +72,84 @@ def main(argv):
     if(dryRun):
         print 'This is a test run with only 1% of the data.'
         
-    #TODO remove
-    #os.chdir("/home/jakob/UPC/2016/02/DeepLearning/code")
-    
     batch_size = 128
-    nb_classes = 11#TODO ???
     np.random.seed(0)
     
-    #load data
+    #read the data sets from tab delimited text files
     train_df = pd.read_csv('train.tsv', sep='\t', header=0)
     test_df = pd.read_csv('test.tsv', sep='\t', header=0)
   
+    #extract the raw values from the data sets  
+    
+    #The phrases (a sequence of words) of the training set
     raw_docs_train = train_df['Phrase'].values
+
+    #The phrases (a sequence of words) of the test set    
     raw_docs_test = test_df['Phrase'].values
+    
+    #The response value, i.e. the output for the training data
+    #For the test data set there are no labels available!
     sentiment_train = train_df['Sentiment'].values
 
+    #In the dry run, we restrict the raw values to 1% of the original values
     if(dryRun == True):
         maxIndex = int(math.ceil(len(raw_docs_train)*0.01))
         raw_docs_train=raw_docs_train[1:maxIndex]
         raw_docs_test=raw_docs_test[1:maxIndex]
         sentiment_train=sentiment_train[1:maxIndex]
    
+    #the number of labels (5)
     num_labels = len(np.unique(sentiment_train))
 
     #text pre-processing
+    
+    #Remove all words that are characterized as stopwords
     stop_words = set(stopwords.words('english'))
-    stop_words.update(['.', ',', '"', "'", ':', ';', '(', ')', '[', ']', '{', '}'])
+    
+    #Also remove all interpunctuation marks.
+    stop_words.update(['!','#','.', ',', '"', "'", ':', ';', '(', ')', '[', ']', '{', '}'])
+
+    #Here we do "stemming":
+    #replace nouns by their infinitive,
+    #replace nouns by their singular.
     stemmer = SnowballStemmer('english')
 
-    print "pre-processing train docs..."
+    print "pre-processing of phrases from the training set..."
+
     processed_docs_train = []
     for doc in raw_docs_train:
        tokens = word_tokenize(doc)
-       filtered = [word for word in tokens if word not in stop_words]
+       filtered = [word for word in tokens if word not in stop_words and word.isalpha()]
        stemmed = [stemmer.stem(word) for word in filtered]
        processed_docs_train.append(stemmed)
    
-    print "pre-processing test docs..."
+    print "pre-processing of phrases from the test set..."
+
     processed_docs_test = []
     for doc in raw_docs_test:
        tokens = word_tokenize(doc)
-       filtered = [word for word in tokens if word not in stop_words]
+       filtered = [word for word in tokens if word not in stop_words and word.isalpha()]
        stemmed = [stemmer.stem(word) for word in filtered]
        processed_docs_test.append(stemmed)
 
+    #Here we  first concatenate all processed words...
     processed_docs_all = np.concatenate((processed_docs_train, processed_docs_test), axis=0)
 
+    #Then we transform the list of processed words into a dictionary.
+    #A dictionary is a mapping between words and their frequency:
+    #The word is represented by an integer Id.
+    #Compare: http://radimrehurek.com/gensim/corpora/dictionary.html 
+    #http://radimrehurek.com/gensim/tut1.html
+    
     dictionary = corpora.Dictionary(processed_docs_all)
     dictionary_size = len(dictionary.keys())
     print "dictionary size: ", dictionary_size 
-    #dictionary.save('dictionary.dict')
-    #corpus = [dictionary.doc2bow(doc) for doc in processed_docs]
-
+    
+    #save the dictionary as a binary file
+    dictionary.save('dictionary.dict')
+    #save the dictionary as a text file (tab delimited)
+    dictionary.save_as_text('dictionary.txt')
+            
     print "converting to token ids..."
     print "processed docs train", len(processed_docs_train)
     print "processed docs test", len(processed_docs_test)
@@ -139,8 +170,9 @@ def main(argv):
  
     print "processed word ids test", len(word_id_test)
     
-    seq_len = np.round((np.mean(word_id_len) + 2*np.std(word_id_len))).astype(int)
-
+    #maximum sequence length
+    seq_len = 500
+    
     #pad sequences
     word_id_train = sequence.pad_sequences(np.array(word_id_train), maxlen=seq_len)
     word_id_test = sequence.pad_sequences(np.array(word_id_test), maxlen=seq_len)
@@ -149,8 +181,9 @@ def main(argv):
     #PLSTM        
     print "building PLSTM ..."
     model_PLSTM = Sequential()
-    model_PLSTM.add(Embedding(dictionary_size, 128, dropout=DROPOUT))
-    model_PLSTM.add(PLSTM(128, consume_less='gpu'))
+    model_PLSTM.add(Embedding(dictionary_size, 128))
+    model_PLSTM.add(Dropout(DROPOUT))
+    model_PLSTM.add(PLSTM(64, consume_less='gpu'))
     model_PLSTM.add(Dense(5, activation='softmax'))
     model_PLSTM.compile(optimizer='rmsprop', loss='categorical_crossentropy',
                         metrics=['accuracy'])
@@ -161,8 +194,7 @@ def main(argv):
     
     print "fitting PLSTM ..."
     history_plstm=model_PLSTM.fit(x=word_id_train, y=y_train_enc,
-    nb_epoch=nb_epoch, batch_size=128, 
-    shuffle=True, verbose=1, validation_split=0.25,
+    nb_epoch=nb_epoch, batch_size=128, verbose=1, validation_split=0.2,
     callbacks=[acc_PLSTM, loss_PLSTM])
     
     #save results to text file
@@ -202,8 +234,9 @@ def main(argv):
     #LSTM
     print "fitting LSTM ..."
     model_LSTM = Sequential()
-    model_LSTM.add(Embedding(dictionary_size, 128, dropout=DROPOUT))
-    model_LSTM.add(LSTM(128, dropout_W=DROPOUT, dropout_U=DROPOUT))
+    model_LSTM.add(Embedding(dictionary_size, 128))
+    model_LSTM.add(Dropout(DROPOUT))
+    model_LSTM.add(LSTM(64))
     model_LSTM.add(Dense(num_labels))
     model_LSTM.add(Activation('softmax'))
     model_LSTM.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -213,8 +246,7 @@ def main(argv):
     loss_LSTM = LossHistory()
         
     history_lstm=model_LSTM.fit(x=word_id_train, y=y_train_enc,
-    nb_epoch=nb_epoch, batch_size=128, 
-    shuffle=True, verbose=1, validation_split=0.25,
+    nb_epoch=nb_epoch, batch_size=128, verbose=1, validation_split=0.2,
     callbacks=[acc_LSTM, loss_LSTM])
 
     #save results to text file
