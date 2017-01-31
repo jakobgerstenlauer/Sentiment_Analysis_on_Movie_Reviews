@@ -1,5 +1,4 @@
-# Sentiment Analysis with LSTM 
-Sentiment Analysis on Movie Reviews
+# Sentiment Analysis based on Movie Reviews using Recurrent Neural Networks (LSTM and PLSTM)
 
 #Dependencies 
 python 2.7
@@ -8,3 +7,75 @@ gensim
 nltk 
 panda 
 keras
+
+#Usage:
+After making the script plstm_validation.py executable it can be called with the following flags:
+./plstm_validation.py -d <DROP_OUT_RATIO> -e <MAX_EPOCHS>
+For more information type:
+./plstm_validation.py -h
+
+Background Information
+
+Kaggle hosted a sentiment analysis competition in February of 2014 for the machine learning community to benchmark their ideas using the Rotten Tomatoes movie review dataset; which is a corpus of movie reviews. The goal was to label phrases on a scale of five values: negative, somewhat negative, neutral, somewhat positive, positive. Obstacles like sentence negation, sarcasm, terseness, language ambiguity, and many others make this task very challenging.
+
+Challenge example:
+
+Regardless of words like cleverness, intelligent, kind and humor are positives words, the phrase is still negative overall. That is why the order of words and the sentence structure must be taken into account to not loose information.
+
+Material & Methods
+
+The dataset is divided into training data, validation data and test data. The sizes of the subsets are 52.7%, 17.5% and 29.8% respectively (total size of the pre-processed dataset 192660).
+Each subset is pre-processed by the following steps:
+ 
+Tokenize each row so that we only have tokens
+Remove all the stopwords
+Use a stemmer (SnowballStemmer) to generalize the word
+Create an id for each token
+Connect each id with the correct label
+Kind of one-hot encoding
+ 
+The preprocessed data is arrays of length 12. Each element corresponds to a token, with a number with the token-id or a zero (which means that there is no token there). In this way each sentence that is being classified is a vector consisting of tokens that each build a sentence. The zero-padding is from left to right, so that the vector contains the information in the end, which benefits the LSTM-/PLSTM-layers. The label for each vector is represented as a 5-element binary vector (one-hot encoding). The input training data consists of the following:
+ 
+·         Dictionary: 13759 different tokens (both training and test)
+·         There are 8544 sentences
+·         There are 156060 sentences, phrases and single tokens
+·         Labels for each of the types above
+ 
+The input test data consists of the following:
+ 
+·         Dictionary: 13759 tokens (both training and test)
+·         There are 3311 sentences
+·         There are 66292 sentences, phrases and single tokens
+ 
+Single tokens are classified with the label 2. The output data is the classified label.
+ 
+The models that has been used are 4 different models, where each model has been tested with different hyperparameters. The models that has been built are the following:
+ 
+{Embedding-layer,LSTM-layer,Dense-layer,Softmax-layer}
+{Embedding-layer,PLSTM-layer,Dense-layer,Softmax-layer}
+{Embedding-layer,LSTM-layer,LSTM-layer,Dense-layer,Softmax-layer}
+{Embedding-layer,PLSTM-layer,PLSTM-layer,Dense-layer,Softmax-layer}
+ 
+For model 1. and 2. the following hyperparameters has been used:
+ 
+Units in Embedding-layer and LSTM-/PLSTM-layer: 128
+Units in Dense-layer: 5
+Dropout-rates: 0.2, 0.3, 0.6, 0.8
+Optimizers:  1. Adam, 2. RMSProp
+Learning-rate: 0.001
+Batch-size: 128
+Epochs: 40
+ 
+For model 3. and 4. the following hyperparameters has been used:
+ 
+Units in Embedding-layer and LSTM-/PLSTM-layers: 128
+Units in Dense-layer: 5
+Dropout-rates: 0.0, 0.2
+Optimizers: 3. Adam, 4. RMSProp
+Learning-rate: 0.001
+Batch-size: 128
+Epochs: 40
+ 
+The objective for calculation of the loss that has been used is the categorical crossentropy, also known as the multiclass logloss. We also shuffle the data-samples for each epoch.
+ 
+The both optimizers uses moving average which, compared to SGD, allows the algorithms to take bigger steps and therefore they converge faster.
