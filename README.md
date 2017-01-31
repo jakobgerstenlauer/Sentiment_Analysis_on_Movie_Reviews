@@ -22,9 +22,10 @@ Challenge example:
 
 Regardless of words like cleverness, intelligent, kind and humor are positives words, the phrase is still negative overall. That is why the order of words and the sentence structure must be taken into account to not loose information.
 
-# Material & Methods
+# Technical details
 
-The dataset is divided into training data, validation data and test data. The sizes of the subsets are 52.7%, 17.5% and 29.8% respectively (total size of the pre-processed dataset 192660).
+The dataset is divided into training data and validation data.
+The sizes of the validation data is 20%. 
 Each subset is pre-processed by the following steps:
  
 Tokenize each row so that we only have tokens
@@ -49,32 +50,12 @@ The input test data consists of the following:
  
 Single tokens are classified with the label 2. The output data is the classified label.
  
-The models that has been used are 4 different models, where each model has been tested with different hyperparameters. The models that has been built are the following:
+The models that have been used are 4 different models, where each model has been tested with different hyperparameters. The models that have been built are the following:
  
 {Embedding-layer,LSTM-layer,Dense-layer,Softmax-layer}
 {Embedding-layer,PLSTM-layer,Dense-layer,Softmax-layer}
 {Embedding-layer,LSTM-layer,LSTM-layer,Dense-layer,Softmax-layer}
 {Embedding-layer,PLSTM-layer,PLSTM-layer,Dense-layer,Softmax-layer}
- 
-For model 1. and 2. the following hyperparameters has been used:
- 
-Units in Embedding-layer and LSTM-/PLSTM-layer: 128
-Units in Dense-layer: 5
-Dropout-rates: 0.2, 0.3, 0.6, 0.8
-Optimizers:  1. Adam, 2. RMSProp
-Learning-rate: 0.001
-Batch-size: 128
-Epochs: 40
- 
-For model 3. and 4. the following hyperparameters has been used:
- 
-Units in Embedding-layer and LSTM-/PLSTM-layers: 128
-Units in Dense-layer: 5
-Dropout-rates: 0.0, 0.2
-Optimizers: 3. Adam, 4. RMSProp
-Learning-rate: 0.001
-Batch-size: 128
-Epochs: 40
  
 The objective for calculation of the loss that has been used is the categorical crossentropy, also known as the multiclass logloss. We also shuffle the data-samples for each epoch.
  
