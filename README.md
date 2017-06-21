@@ -1,6 +1,6 @@
 # Sentiment Analysis based on Movie Reviews using Recurrent Neural Networks (LSTM and PLSTM)
 
-#Dependencies 
+# Dependencies 
 python 2.7
 numpy
 gensim 
@@ -8,13 +8,13 @@ nltk
 panda 
 keras
 
-#Usage:
+# Usage:
 After making the script plstm_validation.py executable it can be called with the following flags:
 ./plstm_validation.py -d <DROP_OUT_RATIO> -e <MAX_EPOCHS>
 For more information type:
 ./plstm_validation.py -h
 
-#Background Information
+# Background Information
 
 Kaggle hosted a sentiment analysis competition in February of 2014 for the machine learning community to benchmark their ideas using the Rotten Tomatoes movie review dataset; which is a corpus of movie reviews. The goal was to label phrases on a scale of five values: negative, somewhat negative, neutral, somewhat positive, positive. Obstacles like sentence negation, sarcasm, terseness, language ambiguity, and many others make this task very challenging.
 
