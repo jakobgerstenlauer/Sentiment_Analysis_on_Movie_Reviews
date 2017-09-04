@@ -23,38 +23,27 @@ Kaggle hosted a sentiment analysis competition in February of 2014 for the machi
 
 The dataset was divided into a training data (80%) and validation data (20%) set.
 Each subset was pre-processed:
-+ Tokenize each row
-+ Remove all stopwords
-+ Do stemming (SnowballStemmer)
-+ Create an id for each token
-+ Connect each id with the correct label
-+ One-hot encoding
++ Tokenize each row.
++ Remove all stopwords.
++ Do stemming (SnowballStemmer).
++ Create a global dictionary with all (stemmed) words from the train and test set.
++ Associate each word in this dictionary with an unique id (Single tokens were classified with the label 2).
++ Create a sequence of token ids for both test and train set.
++ Create a matrix of binary dummy variables for the labels (one dummy variable for each category/ one-hot encoding).
+  
+The training data consisted of the following:
  
-The preprocessed data is an arrays of length 12. Each element corresponds to a token, with a number with the token-id or a zero (which means that there is no token there). In this way each sentence that is being classified is a vector consisting of tokens that each build a sentence. The zero-padding is from left to right, so that the vector contains the information in the end, which benefits the LSTM-/PLSTM-layers. The label for each vector is represented as a 5-element binary vector (one-hot encoding). The input training data consists of the following:
- 
-+ Dictionary: 13759 different tokens (both training and test)
-+ There are 8544 sentences
-+ There are 156060 sentences, phrases and single tokens
++ Dictionary: 13,759 different tokens (both training and test)
++ There are 8,544 sentences
++ There are 156,060 sentences, phrases and single tokens
 + Labels for each of the types above
+  
+The test data consisted of the following:
  
-The input test data consists of the following:
++ Dictionary: 13,759 tokens (both training and test)
++ There are 3,311 sentences
++ There are 66,292 sentences, phrases and single tokens
  
-+ Dictionary: 13759 tokens (both training and test)
-+ There are 3311 sentences
-+ There are 66292 sentences, phrases and single tokens
- 
-Single tokens are classified with the label 2. The output data is the classified label.
- 
-The models that have been used are 4 different models, where each model has been tested with different hyperparameters. The models that have been built are the following:
+After some experimentation with different layer layouts and PLSTM, the following model has been used:
  
 {Embedding-layer,LSTM-layer,Dense-layer,Softmax-layer}
-
-{Embedding-layer,PLSTM-layer,Dense-layer,Softmax-layer}
-
-{Embedding-layer,LSTM-layer,LSTM-layer,Dense-layer,Softmax-layer}
-
-{Embedding-layer,PLSTM-layer,PLSTM-layer,Dense-layer,Softmax-layer}
- 
-The objective for calculation of the loss that has been used is the categorical crossentropy, also known as the multiclass logloss. We also shuffle the data-samples for each epoch.
- 
-The both optimizers uses moving average which, compared to SGD, allows the algorithms to take bigger steps and therefore they converge faster.
